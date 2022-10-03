@@ -9,7 +9,7 @@ uniform float circle_size = 0.5f;
 
 void fragment() {
 	if (distance(vec2(0.5, 0.5), UV) < circle_size) {
-		COLOR.a = 0f;
+		COLOR.a = 0.0f;
 	}
 }"
 
@@ -44,9 +44,6 @@ margin_top = -9.0
 margin_right = 1289.0
 margin_bottom = 730.0
 color = Color( 0, 0, 0, 1 )
-__meta__ = {
-"_edit_use_anchors_": false
-}
 
 [node name="AnimationPlayer" type="AnimationPlayer" parent="CanvasLayer/ColorRect"]
 anims/circle_size_change = SubResource( 3 )
