@@ -44,7 +44,6 @@ func _ready():
 	meetingEndsStream =  preload("res://Assets/Sounds/meetingends.ogg")
 	meetingEndsStreamMusic =  preload("res://Assets/Sounds/loping_sting.ogg")
 	# Load meeting ends image
-	var textureFromImage = ImageTexture.new()
 	var newImage = preload("res://Assets/Images/hands.jpg")
 	meetingEndsTexture = newImage
 	
@@ -122,22 +121,14 @@ func shufflePartecipantsList():
 
 func processsAndSetData():
 	for currentPartecipant in data_Partecipants:
-		var newImage = Image.new()
-		var textureFromImage = ImageTexture.new()
-		var _error = newImage.load(data_Partecipants[currentPartecipant].image_path)
-		textureFromImage.create_from_image(newImage)
-		var ogg_file = File.new()
-		ogg_file.open(data_Partecipants[currentPartecipant].audio_path, File.READ)
-		var bytes = ogg_file.get_buffer(ogg_file.get_len())
-		var stream = AudioStreamOGGVorbis.new()
-		stream.data = bytes
-		stream.loop = false
+		var texture = Partecipant.loadAvatar(data_Partecipants[currentPartecipant])
+		var stream = Partecipant.loadAudio(data_Partecipants[currentPartecipant])
 		var processPartecipantObject = {
 			"_id": data_Partecipants[currentPartecipant]._id,
 			"name": data_Partecipants[currentPartecipant].name,
 			"active": data_Partecipants[currentPartecipant].active,
 			"audioStreamData": stream,
-			"imageTextureData": textureFromImage
+			"imageTextureData": texture
 		}
 		partecipantsIdArrayDisplay.push_back(processPartecipantObject)
 		ogg_file.close()

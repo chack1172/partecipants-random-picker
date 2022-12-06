@@ -131,7 +131,7 @@ func clearPartecipantData():
 	tmpImagePath = ""
 	$NameInput.text = ""
 	$AddPartecipantAudioStream.stream = null
-	$PartecipantPictureDisplay.set_texture(load("res://Assets/Images/default_avatar.png"))
+	$PartecipantPictureDisplay.set_texture(load(Partecipant.DEFAULT_AVATAR))
 	dir.remove("user://_tmp/user_image.jpg")
 	dir.remove("user://_tmp/user_audio.ogg")
 
@@ -147,7 +147,7 @@ func _on_RemovePictureButton_pressed():
 	var dir = Directory.new()
 	imageIsSet = false
 	tmpImagePath = ""
-	$PartecipantPictureDisplay.set_texture(load("res://Assets/Images/default_avatar.png"))
+	$PartecipantPictureDisplay.set_texture(load(Partecipant.DEFAULT_AVATAR))
 	dir.remove("user://_tmp/user_image.jpg")
 
 func _on_ResetPartecipantButton_pressed():

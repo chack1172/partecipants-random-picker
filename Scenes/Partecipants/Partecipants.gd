@@ -59,8 +59,8 @@ func onAddEditPartecipant(newUserName, hasPicture, tmpImagePath, hasAudio, tmpAu
 	
 	var error = null
 	var userName = ""
-	var userImage = "res://Assets/Images/default_avatar.png"
-	var userAudio = "res://Assets/Sounds/default_audio.ogg"
+	var userImage = null
+	var userAudio = null
 	var partecipantObject = null
 	
 	validNameRegEx.compile("\\s+")
@@ -113,26 +113,14 @@ func onAddEditPartecipant(newUserName, hasPicture, tmpImagePath, hasAudio, tmpAu
 	return true
 
 func addToPartecipantsList(partecipantObject):
-	var partecipantImage = Image.new()
-	var textureFromImage = ImageTexture.new()
-	var error = partecipantImage.load(partecipantObject.image_path)
-	if error != OK:
-		print("Error on load image")
-		return
-	textureFromImage.create_from_image(partecipantImage)
-	$PartecipantsList.add_item(partecipantObject.name, textureFromImage, true)
+	var texture = Partecipant.loadAvatar(partecipantObject)
+	$PartecipantsList.add_item(partecipantObject.name, texture, true)
 	$PartecipantsList.set_item_metadata($PartecipantsList.get_item_count() - 1, partecipantObject)
 
 func editPartecipantOnList(partecipantObject, partecipantIndex):
-	var partecipantImage = Image.new()
-	var textureFromImage = ImageTexture.new()
-	var error = partecipantImage.load(partecipantObject.image_path)
-	if error != OK:
-		print("Update partecipants list: Error on load image")
-		$partecipantImage.load("res://Assets/Images/default_avatar.png")
-	textureFromImage.create_from_image(partecipantImage)
+	var texture = Partecipant.loadAvatar(partecipantObject)
 	$PartecipantsList.set_item_text(partecipantIndex, partecipantObject.name)
-	$PartecipantsList.set_item_icon(partecipantIndex, textureFromImage)
+	$PartecipantsList.set_item_icon(partecipantIndex, texture)
 	$PartecipantsList.set_item_metadata(partecipantIndex, partecipantObject)
 	_on_PartecipantsList_item_selected(partecipantIndex, true)
 
@@ -171,12 +159,6 @@ func abortModifyPartecipant():
 	$PopupModifyPartecipant.hide()
 
 func _on_PartecipantsList_item_selected(index = -1, forced = false):
-	var newImage = null
-	var ogg_file = null
-	var textureFromImage = null
-	var error = null
-	var bytes = null
-	var stream = null
 	$ShowPartecipantContainer/ShowPartecipantAudioStream.stop()
 	if (index == -1 || (partecipantIndex == index && forced == false)):
 		partecipantIndex = null
@@ -187,28 +169,13 @@ func _on_PartecipantsList_item_selected(index = -1, forced = false):
 		$ShowPartecipantContainer.visible = true
 		currentPartecipantData = data_Partecipants[($PartecipantsList.get_item_metadata(partecipantIndex)._id)]
 		$ShowPartecipantContainer/LabelShowPartecipant.text = currentPartecipantData.name
-		# Load partecipant image in preview
-		newImage = Image.new()
-		textureFromImage = ImageTexture.new()
-		error = newImage.load(currentPartecipantData.image_path)
-		if error != OK:
-			print("Error on load image")
-			return
-		textureFromImage.create_from_image(newImage)
-		$ShowPartecipantContainer/ShowPartecipantPicture.set_texture(textureFromImage)
+		var texture = Partecipant.loadAvatar(currentPartecipantData)
+		$ShowPartecipantContainer/ShowPartecipantPicture.set_texture(texture)
 		# Load partecipant audio in preview
 		if (currentPartecipantData.has_audio):
-			ogg_file = File.new()
-			error = ogg_file.open(currentPartecipantData.audio_path, File.READ)
-			if error != OK:
-				print("Error on load audio")
-				return
-			bytes = ogg_file.get_buffer(ogg_file.get_len())
-			stream = AudioStreamOGGVorbis.new()
-			stream.data = bytes
+			var stream = Partecipant.loadAudio(currentPartecipantData)
 			$ShowPartecipantContainer/ShowPartecipantAudioStream.stream = stream
 			$ShowPartecipantContainer/ShowPartecipantPlayPauseButton.texture_normal = load("res://Assets/Icons/play.svg")
-			ogg_file.close()
 			$ShowPartecipantContainer/ShowPartecipantPlayPauseButton.visible = true
 			$ShowPartecipantContainer/ShowPartecipantPlayPauseButton.disabled = false
 		else:
