@@ -41,7 +41,7 @@ func _checkFolders():
 		dir.make_dir_recursive("user://data/partecipants/images/")
 
 func _loadDataFromLocal() -> Dictionary:
-	yield()
+	yield(Global.createTimer(0.1), "timeout")
 	var dataFile = File.new()
 	var data = []
 	if (dataFile.file_exists(DATA_PATH)):
