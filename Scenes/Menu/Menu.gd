@@ -1,27 +1,11 @@
 extends Control
 
-var path_data_Partecipants = "user://data/partecipants/partecipants.json"
-var data_Partecipants = {}
-
 # Called when the node enters the scene tree for the first time.
 func _ready():
-	var dir = Directory.new()
-	var dataFile = File.new()
+	# Wait for complete of loadData before continuing
+	yield(Global.partecipantManager.loadData(), "completed")
+	var data_Partecipants = Global.partecipantManager.getData()
 	var counter = 0
-	#Check if folders for partecipant main data file exists
-	if !dir.dir_exists("user://data/partecipants/"):
-		dir.make_dir_recursive("user://data/partecipants/")
-	else:
-		if (dataFile.file_exists(path_data_Partecipants)):
-			dataFile.open(path_data_Partecipants, dataFile.READ)
-			data_Partecipants = parse_json(dataFile.get_as_text())
-			dataFile.close()
-	#Check if folders for partecipants files exists
-	if !dir.dir_exists("user://data/partecipants/audios/"):
-		dir.make_dir_recursive("user://data/partecipants/audios/")
-	if !dir.dir_exists("user://data/partecipants/images/"):
-		dir.make_dir_recursive("user://data/partecipants/images/")
-		
 	for currentPartecipant in data_Partecipants:
 		if (data_Partecipants[currentPartecipant].active == true):
 			counter = counter + 1
@@ -31,6 +15,8 @@ func _ready():
 	else:
 		$StartMeetingButton.disabled = false
 		$StartMeetingButton.hint_tooltip = ""
+	if Global.IS_BROWSER:
+		$ExitButton.visible = false
 
 # Called every frame. 'delta' is the elapsed time since the previous frame.
 # func _process(_delta):

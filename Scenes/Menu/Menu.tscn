@@ -30,9 +30,6 @@ custom_fonts/font = ExtResource( 3 )
 text = "TEAMS PARTECIPANTS
 RANDOM PICKER"
 align = 1
-__meta__ = {
-"_edit_use_anchors_": false
-}
 
 [node name="StartMeetingButton" type="Button" parent="."]
 anchor_left = 0.5
