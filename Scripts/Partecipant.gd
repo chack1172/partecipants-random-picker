@@ -3,7 +3,7 @@ extends Node
 class_name Partecipant
 
 const DATA_PATH = "user://data/partecipants/partecipants.json";
-const API_DATA_PATH = "http://localhost:1000/data.php";
+var API_DATA_PATH = "/data.php";
 
 const DEFAULT_AVATAR = "res://Assets/Images/default_avatar.png";
 const DEFAULT_AUDIO = "res://Assets/Sounds/default_audio.ogg";
@@ -14,7 +14,7 @@ const DEFAULT_AUDIO = "res://Assets/Sounds/default_audio.ogg";
 var _data = null
 
 func _init():
-	if !Global.IS_BROWSER:
+	if !Global.config.use_api:
 		_checkFolders()
 	# yield(CommonScene.currentScene.get_tree().create_timer(0.1), "timeout")
 	# loadData()
@@ -23,7 +23,7 @@ func getData() -> Dictionary:
 	return _data
 
 func loadData():
-	if Global.IS_BROWSER:
+	if Global.config.use_api:
 		_data = yield(_loadDataFromAPI(), "completed")
 	else:
 		_data = yield(_loadDataFromLocal(), "completed")
@@ -53,7 +53,7 @@ func _loadDataFromLocal() -> Dictionary:
 func _loadDataFromAPI() -> Dictionary:
 	var request = Global.request
 
-	var error = request.request(API_DATA_PATH)
+	var error = request.request(Global.config.api_path + API_DATA_PATH)
 	if error != OK:
 		push_error("An error occured loading data.")
 	else:
