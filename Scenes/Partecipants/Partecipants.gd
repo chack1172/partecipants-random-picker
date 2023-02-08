@@ -2,31 +2,18 @@ extends Control
 
 const uuid_util = preload('res://Scripts/uuid.gd')
 
-var data_Partecipants = {}
 var path_data_Partecipants = "user://data/partecipants/partecipants.json"
+var data_Partecipants = {}
 
 var partecipantIndex = null
 var currentPartecipantData = null
 
+var action = null
+
 func _ready():
-	var dir = Directory.new()
-	var dataFile = File.new()
-	#Check if folders for partecipant main data file exists
-	if !dir.dir_exists("user://data/partecipants/"):
-		dir.make_dir_recursive("user://data/partecipants/")
-	else:
-		if (dataFile.file_exists(path_data_Partecipants)):
-			dataFile.open(path_data_Partecipants, dataFile.READ)
-			data_Partecipants = parse_json(dataFile.get_as_text())
-			dataFile.close()
-			for currentPartecipant in data_Partecipants:
-				addToPartecipantsList(data_Partecipants[currentPartecipant])
-	#Check if folders for partecipants files exists
-	if !dir.dir_exists("user://data/partecipants/audios/"):
-		dir.make_dir_recursive("user://data/partecipants/audios/")
-	if !dir.dir_exists("user://data/partecipants/images/"):
-		dir.make_dir_recursive("user://data/partecipants/images/")
-	# print(OS.get_user_data_dir()) # Donde se salvan los archivos
+	data_Partecipants = Global.partecipantManager.getData();
+	for currentPartecipant in data_Partecipants:
+		addToPartecipantsList(data_Partecipants[currentPartecipant])
 
 # Called every frame. 'delta' is the elapsed time since the previous frame.
 func _process(delta):
