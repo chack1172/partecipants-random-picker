@@ -11,7 +11,6 @@ margin_right = 641.045
 margin_bottom = 436.485
 __meta__ = {
 "_edit_horizontal_guides_": [ 217.943 ],
-"_edit_use_anchors_": false,
 "_edit_vertical_guides_": [ 321.738 ]
 }
 
@@ -22,8 +21,8 @@ margin_left = 19.2534
 margin_top = -134.382
 margin_right = 626.253
 margin_bottom = -95.3822
-custom_fonts/font = ExtResource( 1 )
 custom_colors/font_color = Color( 1, 1, 1, 1 )
+custom_fonts/font = ExtResource( 1 )
 text = "Nome Partecipante"
 align = 1
 valign = 1
@@ -62,9 +61,9 @@ margin_left = 208.0
 margin_top = 374.0
 margin_right = 279.0
 margin_bottom = 400.0
-custom_fonts/font = ExtResource( 4 )
 custom_colors/font_color_hover = Color( 0, 0.764706, 0.752941, 1 )
 custom_colors/font_color_pressed = Color( 0, 0.764706, 0.752941, 1 )
+custom_fonts/font = ExtResource( 4 )
 shortcut_in_tooltip = false
 text = "Attivo"
 flat = true

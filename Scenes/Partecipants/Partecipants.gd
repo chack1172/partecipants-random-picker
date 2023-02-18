@@ -8,6 +8,8 @@ var data_Partecipants = {}
 var partecipantIndex = null
 var currentPartecipantData = null
 
+enum actions { ADD, MODIFY }
+
 var action = null
 
 func _ready():
@@ -38,65 +40,67 @@ func clearTempFiles():
 		dir.remove("user://_tmp/user_image.png")
 		dir.remove("user://_tmp/user_audio.ogg")
 
-func onAddEditPartecipant(newUserName, hasPicture, tmpImagePath, hasAudio, tmpAudioPath, partecipantIndex = null, partecipantId = null):
+func onAddEditPartecipant(
+	newUserName: String,
+	hasPicture: bool,
+	image64: String,
+	imageExt: String,
+	hasAudio: bool,
+	audio64: String,
+	audioExt: String,
+	partecipantIndex = null,
+	partecipantId = null,
+	updateImage: bool = false,
+	updateAudio: bool = false
+):
 	var validNameRegEx = RegEx.new()
 	var newPartecipantId = uuid_util.v4()
-	var dir = Directory.new()
-	var dataFile = File.new()
-	
-	var error = null
-	var userName = ""
-	var userImage = null
-	var userAudio = null
-	var partecipantObject = null
-	
+
 	validNameRegEx.compile("\\s+")
-	userName = validNameRegEx.sub(newUserName, " ", true)
-	
-	if (hasPicture):
-		userImage = "user://data/partecipants/images/" + userName.replace(" ", "_") + "." + tmpImagePath.get_extension()
-		error = dir.copy(tmpImagePath, userImage)
-		if (error != OK):
-			print("Error on save image")
-			return false
-	if (hasAudio):
-		userAudio = "user://data/partecipants/audios/" + userName.replace(" ", "_") + "." + tmpAudioPath.get_extension()
-		error = dir.copy(tmpAudioPath, userAudio)
-		if (error != OK):
-			print("Error on save audio")
-			return false
+	var userName = validNameRegEx.sub(newUserName, " ", true)
+	var userImage = userName.replace(" ", "_") + "." + imageExt
+	var userAudio = userName.replace(" ", "_") + "." + audioExt
+
+	# if !Global.config.use_api:
+	var partecipantObject = {
+		"name": userName,
+		"active": true,
+		"has_image": false,
+		"image_path": '',
+		"has_audio": false,
+		"audio_path": ''
+	}
+	if updateImage:
+		partecipantObject.has_image = hasPicture
+		if hasPicture:
+			partecipantObject.image_path = userImage
+	else:
+		image64 = ''
+
+	if updateAudio:
+		partecipantObject.has_audio = hasAudio
+		if hasAudio:
+			partecipantObject.audio_path = userAudio
+	else:
+		audio64 = ''
 
 	if (partecipantIndex == null || partecipantIndex < 0):
-		partecipantObject = {
-			"_id": newPartecipantId,
-			"name": userName,
-			"has_image": hasPicture,
-			"image_path": userImage,
-			"has_audio": hasAudio,
-			"audio_path": userAudio,
-			"active": true
-		}
-		data_Partecipants[newPartecipantId] = partecipantObject
-		dataFile.open(path_data_Partecipants, dataFile.WRITE)
-		dataFile.store_line(to_json(data_Partecipants))
-		dataFile.close()
-		addToPartecipantsList(partecipantObject)
+		partecipantObject = yield(Global.partecipantManager.update(newPartecipantId, partecipantObject, image64, audio64), "completed")
+		if !('error' in partecipantObject):
+			addToPartecipantsList(partecipantObject)
 	else:
-		partecipantObject = {
-			"_id": partecipantId,
-			"name": userName,
-			"has_image": hasPicture,
-			"image_path": userImage,
-			"has_audio": hasAudio,
-			"audio_path": userAudio,
-			"active": currentPartecipantData.active
-		}
-		
-		data_Partecipants[partecipantId] = partecipantObject
-		dataFile.open(path_data_Partecipants, dataFile.WRITE)
-		dataFile.store_line(to_json(data_Partecipants))
-		dataFile.close()
-		editPartecipantOnList(partecipantObject, partecipantIndex)
+		var currentPartecipant = data_Partecipants[partecipantId]
+		if !updateImage:
+			partecipantObject.has_image = currentPartecipant.has_image
+			partecipantObject.image_path = currentPartecipant.image_path
+		if !updateAudio:
+			partecipantObject.has_audio = currentPartecipant.has_audio
+			partecipantObject.audio_path = currentPartecipant.audio_path
+		partecipantObject.active = currentPartecipantData.active
+		partecipantObject = yield(Global.partecipantManager.update(partecipantId, partecipantObject, image64, audio64), "completed")
+		if !('error' in partecipantObject):
+			editPartecipantOnList(partecipantObject, partecipantIndex)
+	data_Partecipants = Global.partecipantManager.getData()
 	return true
 
 func addToPartecipantsList(partecipantObject):
@@ -115,31 +119,22 @@ func _on_DeletePartecipantButton_pressed():
 	if (partecipantIndex != null && currentPartecipantData != null):
 		$ShowPartecipantContainer/ShowPartecipantAudioStream.stop()
 		$ShowPartecipantContainer/ShowPartecipantPlayPauseButton.texture_normal = load("res://Assets/Icons/play.svg")
-		var dataFile = File.new()
-		var dir = Directory.new()
+		Global.partecipantManager.delete(currentPartecipantData._id)
 		data_Partecipants.erase(currentPartecipantData._id)
-		dataFile.open(path_data_Partecipants, dataFile.WRITE)
-		dataFile.store_line(to_json(data_Partecipants))
-		dataFile.close()
 		$PartecipantsList.remove_item(partecipantIndex)
-		if (currentPartecipantData.has_audio):
-			dir.remove(currentPartecipantData.audio_path)
-		if (currentPartecipantData.has_image):
-			dir.remove(currentPartecipantData.image_path)
 		_on_PartecipantsList_item_selected()
 
 func _on_EditPartecipantButton_pressed():
 	if (partecipantIndex != null && currentPartecipantData != null):
 		$ShowPartecipantContainer/ShowPartecipantAudioStream.stop()
 		$ShowPartecipantContainer/ShowPartecipantPlayPauseButton.texture_normal = load("res://Assets/Icons/play.svg")
+		action = actions.MODIFY
 		$PopupModifyPartecipant.popup()
 
 func _on_AddNewPartecipantButton_pressed():
-	$PopupAddPartecipant.popup()
-	
-func abortAddPartecipant():
-	clearTempFiles()
-	$PopupAddPartecipant.hide()
+#	$PopupAddPartecipant.popup()
+	action = actions.ADD
+	$PopupModifyPartecipant.popup()
 
 func abortModifyPartecipant():
 	clearTempFiles()
@@ -175,22 +170,11 @@ func _on_PartecipantsList_item_selected(index = -1, forced = false):
 			$ShowPartecipantContainer/PartecipantActiveCheckbox.pressed = true
 
 func _on_PartecipantActiveCheckbox_toggled(button_pressed):
-	if not (partecipantIndex == null || partecipantIndex < 0):
-		var dataFile = File.new()
-		var partecipantObject = {
-			"_id": currentPartecipantData._id,
-			"name": currentPartecipantData.name,
-			"has_audio": currentPartecipantData.has_audio,
-			"has_image": currentPartecipantData.has_image,
-			"image_path": currentPartecipantData.image_path,
-			"audio_path": currentPartecipantData.audio_path,
-			"active": button_pressed
-		}
-		data_Partecipants[currentPartecipantData._id] = partecipantObject
-		dataFile.open(path_data_Partecipants, dataFile.WRITE)
-		dataFile.store_line(to_json(data_Partecipants))
-		dataFile.close()
-		editPartecipantOnList(partecipantObject, partecipantIndex)
+	if not (partecipantIndex == null || partecipantIndex < 0 || currentPartecipantData.active == button_pressed):
+		currentPartecipantData.active = button_pressed
+		data_Partecipants[currentPartecipantData._id].active = button_pressed
+		Global.partecipantManager.update(currentPartecipantData._id, currentPartecipantData, "", "")
+		editPartecipantOnList(currentPartecipantData, partecipantIndex)
 
 func _on_ShowPartecipantAudioStream_finished():
 	$ShowPartecipantContainer/ShowPartecipantPlayPauseButton.texture_normal = load("res://Assets/Icons/play.svg")

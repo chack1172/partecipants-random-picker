@@ -8,7 +8,7 @@ var config = {
 };
 
 var partecipantManager: Partecipant = null
-var request = HTTPRequest.new()
+var request: HTTPRequest = HTTPRequest.new()
 
 func _ready():
 	add_child(request)

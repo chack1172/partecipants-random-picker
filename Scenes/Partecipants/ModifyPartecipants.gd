@@ -4,24 +4,21 @@ var node_Partecipants = null
 var currentPartecipantData = null
 var currentPartecipantIndex = null
 
-var currentLoadingType = ""
-var nameIsSet = false
-var imageIsSet = false
-var tmpImagePath = ""
-var audioIsSet = false
-var tmpAudioPath = ""
+enum loadingType { TYPE_EMPTY, TYPE_IMAGE, TYPE_AUDIO }
+
+var currentLoadingType: int = loadingType.TYPE_EMPTY
+var nameIsSet: bool = false
+var imageIsSet: bool = false
+var image64: String = ""
+var imageExt: String = ""
+var updateImage: bool = false
+var audioIsSet: bool = false
+var audio64: String = ""
+var audioExt: String = ""
+var updateAudio: bool = false
 
 func _ready():
 	node_Partecipants = find_parent("Partecipants")
-	var dir = Directory.new()
-	# Check if temporal files folder exists
-	if !dir.dir_exists("user://_tmp/"):
-		dir.make_dir("user://_tmp/")
-	else:
-		dir.remove("user://_tmp/user_image.jpg")
-		dir.remove("user://_tmp/user_image.jpeg")
-		dir.remove("user://_tmp/user_image.png")
-		dir.remove("user://_tmp/user_audio.ogg")
 
 # Called every frame. 'delta' is the elapsed time since the previous frame.
 func _process(_delta):
@@ -33,7 +30,7 @@ func _process(_delta):
 		$ModifyPictureButton.text = ("Aggiungere foto")
 		$RemovePictureButton.disabled = true
 		$RemovePictureButton.visible = false
-		
+
 	if (audioIsSet):
 		if ($PlayPauseButton.disabled):
 			$PlayPauseButton.disabled = false
@@ -47,62 +44,76 @@ func _process(_delta):
 		$ModifyVoiceButton.text = ("Aggiungere voce")
 		$RemoveVoiceButton.disabled = true
 		$RemoveVoiceButton.visible = false
-	
+
 	if(nameIsSet):
 		$ModifyPartecipantFormButtons/ConfirmPartecipantButton.disabled = false
 	else:
 		$ModifyPartecipantFormButtons/ConfirmPartecipantButton.disabled = true
 
-func setCurrentPartecipantImage(path):
-	var dir = Directory.new()
-	var newImage = Image.new()
-	var textureFromImage = ImageTexture.new()
-	var error = newImage.load(path)
-	if error != OK:
-		print("Error on load image")
-		return
-	error = dir.copy(path, "user://_tmp/user_image." + path.get_extension())
-	if error != OK:
-		print("Error on save image copy")
-		return
-	tmpImagePath = "user://_tmp/user_image." + path.get_extension()
-	textureFromImage.create_from_image(newImage)
-	$PartecipantPictureDisplay.set_texture(textureFromImage)
-	imageIsSet = true
+func setCurrentPartecipantImage(path = null) -> void:
+	var texture: ImageTexture = null
+	if path != null:
+		var file: File = File.new()
+		var newImage: Image = Image.new()
+		var error = newImage.load(path)
+		if error != OK:
+			print("Error on load image")
+			return
+		error = file.open(path, File.READ);
+		if error != OK:
+			print("Error on load image")
+			return
+		var image = file.get_buffer(file.get_len())
+		imageExt = path.get_extension()
+		image64 = Marshalls.raw_to_base64(image)
+		file.close()
+		texture = ImageTexture.new()
+		texture.create_from_image(newImage)
+		imageIsSet = true
+		updateImage = true
+	else:
+		imageIsSet = currentPartecipantData.has_image
+		texture = Partecipant.loadAvatar(currentPartecipantData)
 
-func setCurrentPartecipantAudio(path):
-	var dir = Directory.new()
-	var ogg_file = File.new()
-	var error = dir.copy(path, "user://_tmp/user_audio." + path.get_extension())
-	if error != OK:
-		print("Error on save audio copy")
-		return
-	tmpAudioPath = "user://_tmp/user_audio." + path.get_extension()
-	ogg_file.open(path, File.READ)
-	var bytes = ogg_file.get_buffer(ogg_file.get_len())
-	var stream = AudioStreamOGGVorbis.new()
-	stream.data = bytes
+	$PartecipantPictureDisplay.set_texture(texture)
+
+func setCurrentPartecipantAudio(path = null) -> void:
+	var stream: AudioStream = null
+	if path != null:
+		var ogg_file = File.new()
+		ogg_file.open(path, File.READ)
+		var bytes = ogg_file.get_buffer(ogg_file.get_len())
+		audio64 = Marshalls.raw_to_base64(bytes)
+		audioExt = path.get_extension()
+		stream = AudioStreamOGGVorbis.new()
+		stream.data = bytes
+		ogg_file.close()
+		audioIsSet = true
+		updateAudio = true
+	else:
+		audioIsSet = currentPartecipantData.has_audio
+		stream = Partecipant.loadAudio(currentPartecipantData)
+
 	$ModifyPartecipantAudioStream.stream = stream
 	$PlayPauseButton.texture_normal = load("res://Assets/Icons/play.svg")
-	ogg_file.close()
-	audioIsSet = true
+
 
 func _on_ModifyPictureButton_pressed():
-	currentLoadingType = "image"
+	currentLoadingType = loadingType.TYPE_IMAGE
 	$FileLoader.filters = PoolStringArray(["*.png ; PNG Images","*.jpg ; JPG Images","*.jpeg ; JPEG Images"])
 	$FileLoader.popup();
 
 func _on_ModifyVoiceButton_pressed():
-	currentLoadingType = "audio"
+	currentLoadingType = loadingType.TYPE_AUDIO
 	$FileLoader.filters = PoolStringArray(["*.ogg ; OGG Audio"])
 	$FileLoader.popup();
 
 func _on_FileLoader_file_selected(path):
-	if (currentLoadingType == "image"):
+	if currentLoadingType == loadingType.TYPE_IMAGE:
 		setCurrentPartecipantImage(path)
-	if currentLoadingType == "audio":
+	if currentLoadingType == loadingType.TYPE_AUDIO:
 		setCurrentPartecipantAudio(path)
-	currentLoadingType = ""
+	currentLoadingType = loadingType.TYPE_EMPTY
 
 func _on_AudioStreamPlayer_finished():
 	$PlayPauseButton.texture_normal = load("res://Assets/Icons/play.svg")
@@ -125,53 +136,56 @@ func _on_NameInput_text_changed(_new_text):
 		nameIsSet = false
 
 func resetPartecipantData():
+	updateImage = false
+	updateAudio = false
 	if (currentPartecipantData.has_audio):
-		setCurrentPartecipantAudio(currentPartecipantData.audio_path)
+		setCurrentPartecipantAudio()
 	else:
-		audioIsSet = false
-		tmpAudioPath = ""
+		resetAudio()
 	if (currentPartecipantData.has_image):
-		setCurrentPartecipantImage(currentPartecipantData.image_path)
+		setCurrentPartecipantImage()
 	else:
-		imageIsSet = false
-		tmpImagePath = ""
-		$PartecipantPictureDisplay.set_texture(load(Partecipant.DEFAULT_AVATAR))
+		resetImage()
 	$NameInput.text = currentPartecipantData.name
 	nameIsSet = true
 
 func clearPartecipantData():
-	var dir = Directory.new()
-	imageIsSet = false
 	nameIsSet = false
-	audioIsSet = false
-	tmpAudioPath = ""
-	tmpImagePath = ""
 	$NameInput.text = ""
-	$ModifyPartecipantAudioStream.stream = null
+	updateImage = false
+	updateAudio = false
+	resetImage()
+	resetAudio()
+
+func resetImage():
+	imageIsSet = false
+	image64 = ""
+	imageExt = ""
 	$PartecipantPictureDisplay.set_texture(load(Partecipant.DEFAULT_AVATAR))
-	dir.remove("user://_tmp/user_image.jpg")
-	dir.remove("user://_tmp/user_audio.ogg")
+
+func resetAudio():
+	audioIsSet = false
+	audio64 = ""
+	audioExt = ""
+	$ModifyPartecipantAudioStream.stream = null
+
 
 func _on_RemoveVoiceButton_pressed():
-	var dir = Directory.new()
-	audioIsSet = false
-	tmpAudioPath = ""
-	$ModifyPartecipantAudioStream.stream = null
-	dir.remove("user://_tmp/user_audio.ogg")
+	updateAudio = true
+	resetAudio()
 
 func _on_RemovePictureButton_pressed():
-	var dir = Directory.new()
-	imageIsSet = false
-	tmpImagePath = ""
-	$PartecipantPictureDisplay.set_texture(load(Partecipant.DEFAULT_AVATAR))
-	dir.remove("user://_tmp/user_image.jpg")
+	updateImage = true
+	resetImage()
 
 func _on_ResetPartecipantButton_pressed():
-	resetPartecipantData()
+	if node_Partecipants.action == node_Partecipants.actions.MODIFY:
+		resetPartecipantData()
+	else:
+		clearPartecipantData()
 
 func _on_ConfirmPartecipantButton_pressed():
-	print(currentPartecipantData._id)
-	var partecipantModifyed = node_Partecipants.onAddEditPartecipant($NameInput.text.strip_edges(), imageIsSet, tmpImagePath, audioIsSet, tmpAudioPath, currentPartecipantIndex, currentPartecipantData._id)
+	var partecipantModifyed = node_Partecipants.onAddEditPartecipant($NameInput.text.strip_edges(), imageIsSet, image64, imageExt, audioIsSet, audio64, audioExt, currentPartecipantIndex, currentPartecipantData._id, updateImage, updateAudio)
 	if (partecipantModifyed):
 		clearPartecipantData()
 		node_Partecipants.abortModifyPartecipant()
@@ -182,6 +196,15 @@ func _on_CancelPartecipantButton_pressed():
 	node_Partecipants.abortModifyPartecipant()
 
 func _on_PopupModifyPartecipant_about_to_show():
-	currentPartecipantData = node_Partecipants.currentPartecipantData
-	currentPartecipantIndex = node_Partecipants.partecipantIndex
-	resetPartecipantData()
+	if node_Partecipants.action == node_Partecipants.actions.MODIFY:
+		currentPartecipantData = node_Partecipants.currentPartecipantData
+		currentPartecipantIndex = node_Partecipants.partecipantIndex
+		$LabelModifyPartecipant.text = "Modifica partecipante"
+		resetPartecipantData()
+	else:
+		currentPartecipantData = {
+			"_id": null
+		}
+		currentPartecipantIndex = null
+		$LabelModifyPartecipant.text = "Aggiungere partecipante"
+		clearPartecipantData()

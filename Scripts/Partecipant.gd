@@ -3,7 +3,12 @@ extends Node
 class_name Partecipant
 
 const DATA_PATH = "user://data/partecipants/partecipants.json";
-var API_DATA_PATH = "/data.php";
+const IMAGES_PATH = "user://data/partecipants/images/";
+const AUDIOS_PATH = "user://data/partecipants/audios/";
+
+const API_DATA_PATH = "/data.php";
+const API_UPDATE_PATH = "/update.php?id=:id";
+const API_DELETE_PATH = "/delete.php?id=:id";
 
 const DEFAULT_AVATAR = "res://Assets/Images/default_avatar.png";
 const DEFAULT_AUDIO = "res://Assets/Sounds/default_audio.ogg";
@@ -27,6 +32,106 @@ func loadData():
 		_data = yield(_loadDataFromAPI(), "completed")
 	else:
 		_data = yield(_loadDataFromLocal(), "completed")
+
+func update(id: String, data: Dictionary, image: String = "", audio: String = "") -> Dictionary:
+	data.erase('image')
+	data.erase('audio')
+	print("Update " + id)
+	print(data)
+	var updated = null
+	if Global.config.use_api:
+		updated = yield(_updateAPI(id, data, image, audio), "completed")
+	else:
+		updated = yield(_updateLocal(id, data, image, audio), "completed")
+	_data[id] = updated
+	return updated
+
+func delete(id: String) -> bool:
+	var deleted = false;
+	if Global.config.use_api:
+		deleted = yield(_deleteAPI(id), "completed")
+	else:
+		deleted = yield(_deleteLocal(id), "completed")
+	return deleted
+
+func _updateAPI(id: String, data: Dictionary, image: String, audio: String) -> Dictionary:
+	data["_id"] = id
+	data.image = image;
+	data.audio = audio;
+
+	var request = Global.request
+	var path = Global.config.api_path + API_UPDATE_PATH.replace(":id", id);
+	var headers = ["Content-Type: application/json"]
+	var error = request.request(path, headers, true, HTTPClient.METHOD_POST, JSON.print(data))
+	if error == OK:
+		var result = yield(request, "request_completed")
+		result = JSON.parse(result[3].get_string_from_utf8());
+		if result.error == OK and typeof(result.result) == TYPE_DICTIONARY:
+			return result.result
+
+	return {"error": "An error occured updating data."}
+
+func _updateLocal(id: String, data: Dictionary, image: String, audio: String) -> Dictionary:
+	yield(Global.createTimer(0.1), "timeout")
+	# store image file
+	if (data.has_image && image.length()):
+		var imagePath = IMAGES_PATH + data.image_path
+		var file: File = File.new()
+		var error = file.open(imagePath, File.WRITE)
+		if (error != OK):
+			print("Error on save image")
+			return {}
+		file.store_buffer(Marshalls.base64_to_raw(image))
+		file.close()
+	# store audio file
+	if (data.has_audio && audio.length()):
+		var audioPath = AUDIOS_PATH + data.audio_path
+		var file: File = File.new()
+		var error = file.open(audioPath, File.WRITE)
+		if (error != OK):
+			print("Error on save audio")
+			return {}
+		file.store_buffer(Marshalls.base64_to_raw(audio))
+		file.close()
+	# Update partecipant data
+	data["_id"] = id
+	_data[id] = data
+	# Update partecipants file
+	_updateFile()
+	return data
+
+func _deleteAPI(id: String) -> bool:
+	var request = Global.request
+	var path = Global.config.api_path + API_DELETE_PATH.replace(":id", id);
+	var error = request.request(path, [], true, HTTPClient.METHOD_DELETE)
+	if error == OK:
+		var result = yield(request, "request_completed")
+		result = JSON.parse(result[3].get_string_from_utf8());
+		if result.error == OK and typeof(result.result) == TYPE_DICTIONARY and !('error' in result.result):
+			return true
+
+	return false
+
+func _deleteLocal(id: String) -> bool:
+	yield(Global.createTimer(0.1), "timeout")
+	var dir = Directory.new()
+	var partecipant = _data[id];
+	if (partecipant.has_audio):
+		dir.remove(partecipant.audio_path)
+	if (partecipant.has_image):
+		dir.remove(partecipant.image_path)
+	_data.erase(id)
+	_updateFile()
+	return true;
+
+func _updateFile():
+	var dataFile: File = File.new()
+	var error = dataFile.open(DATA_PATH, dataFile.WRITE)
+	if error != OK:
+		print("Error updating partecipants file list")
+		return false
+	dataFile.store_line(to_json(_data))
+	dataFile.close()
 
 func _checkFolders():
 	var dir = Directory.new()
@@ -70,14 +175,32 @@ static func loadAvatar(partecipant) -> Texture:
 	var texture: Texture = null
 	if (partecipant.has_image):
 		var image = Image.new()
-		texture = ImageTexture.new()
-		var error = image.load(partecipant.image_path)
-		if error != OK:
-			print("Error on load image")
-			texture = load(DEFAULT_AVATAR)
+		if Global.config.use_api:
+			var ext = partecipant.image_path.get_extension()
+			var imageBuffer = Marshalls.base64_to_raw(partecipant.image)
+			var result = -1
+			if ext == 'jpg' or ext == 'jpeg':
+				result = image.load_jpg_from_buffer(imageBuffer)
+			else:
+				result = image.load_png_from_buffer(imageBuffer)
+
+			if result != OK:
+				print("Error on load image")
+			else:
+				texture = ImageTexture.new()
+				texture.create_from_image(image)
 		else:
-			texture.create_from_image(image)
-	else:
+			var path = partecipant.image_path
+			if !path.begins_with(IMAGES_PATH):
+				path = IMAGES_PATH + path
+			var error = image.load(path)
+			if error != OK:
+				print("Error on load image")
+			else:
+				texture = ImageTexture.new()
+				texture.create_from_image(image)
+
+	if texture == null:
 		texture = load(DEFAULT_AVATAR)
 
 	return texture
@@ -85,16 +208,19 @@ static func loadAvatar(partecipant) -> Texture:
 static func loadAudio(partecipant) -> AudioStream :
 	var stream: AudioStream = null
 	if (partecipant.has_audio):
-		var ogg_file = File.new()
-		var error = ogg_file.open(partecipant.audio_path, File.READ)
-		if error != OK:
-			stream = load(DEFAULT_AUDIO)
+		var bytes = []
+		if Global.config.use_api:
+			bytes = Marshalls.base64_to_raw(partecipant.audio)
 		else:
-			var bytes = ogg_file.get_buffer(ogg_file.get_len())
-			stream = AudioStreamOGGVorbis.new()
-			stream.data = bytes
+			var ogg_file = File.new()
+			var error = ogg_file.open(partecipant.audio_path, File.READ)
+			if error == OK:
+				bytes = ogg_file.get_buffer(ogg_file.get_len())
 			ogg_file.close()
-	else:
+		stream = AudioStreamOGGVorbis.new()
+		stream.data = bytes
+
+	if stream == null:
 		stream = load(DEFAULT_AUDIO)
 
 	stream.loop = false
