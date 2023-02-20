@@ -6,6 +6,7 @@ var config = {
 	"use_api": true,
 	"api_path": "http://localhost:8082"
 };
+var arguments = {}
 
 var partecipantManager: Partecipant = null
 var request: HTTPRequest = HTTPRequest.new()
@@ -15,10 +16,17 @@ func _ready():
 	# Commented because json file is not included in res://
 	# Manually change config variable
 	# loadConfig()
+
+	_parseArguments()
+	if 'use_api' in arguments:
+		config.use_api = arguments['use_api']
+	if 'api_path' in arguments:
+		config.api_path = arguments['api_path']
+
 	# Force use of api if run in browser
 	if IS_BROWSER:
 		config.use_api = true;
-	print(config)
+
 	partecipantManager = Partecipant.new()
 
 func loadConfig():
@@ -29,6 +37,13 @@ func loadConfig():
 			config[key.to_lower()] = jsonConfig[key];
 		file.close();
 
+
+func _parseArguments():
+	for argument in OS.get_cmdline_args():
+		# Parse valid command-line arguments into a dictionary
+		if argument.find("=") > -1:
+			var key_value = argument.split("=")
+			arguments[key_value[0].lstrip("--")] = key_value[1]
 
 func createTimer(time):
 	return get_tree().create_timer(time)
