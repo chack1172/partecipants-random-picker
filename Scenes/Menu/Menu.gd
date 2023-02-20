@@ -2,6 +2,9 @@ extends Control
 
 # Called when the node enters the scene tree for the first time.
 func _ready():
+	# Disable exit button if run in browser
+	if Global.IS_BROWSER:
+		$ExitButton.visible = false
 	# Wait for complete of loadData before continuing
 	yield(Global.partecipantManager.loadData(), "completed")
 	var data_Partecipants = Global.partecipantManager.getData()
@@ -15,8 +18,6 @@ func _ready():
 	else:
 		$StartMeetingButton.disabled = false
 		$StartMeetingButton.hint_tooltip = ""
-	if Global.IS_BROWSER:
-		$ExitButton.visible = false
 
 # Called every frame. 'delta' is the elapsed time since the previous frame.
 # func _process(_delta):
