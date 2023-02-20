@@ -1,6 +1,5 @@
 extends Control
 
-var path_data_Partecipants = "user://data/partecipants/partecipants.json"
 var data_Partecipants = {}
 var MeetingActive = true
 
@@ -37,7 +36,6 @@ func _ready():
 	$CallNextOneButton.visible = false
 	$LightBulbs.setStatus('loop')
 	$ShowPartecipantContainerSquare/LabelShowPartecipant.text = "Benvenuti!"
-	var dataFile = File.new()
 	#Load next partecipant Stream
 	nextPartecipantStream = preload("res://Assets/Sounds/nextpartecipant.ogg")
 	# Load meeting Ends Stream
@@ -46,12 +44,9 @@ func _ready():
 	# Load meeting ends image
 	var newImage = preload("res://Assets/Images/hands.jpg")
 	meetingEndsTexture = newImage
-	
-	if (dataFile.file_exists(path_data_Partecipants)):
-		dataFile.open(path_data_Partecipants, dataFile.READ)
-		data_Partecipants = parse_json(dataFile.get_as_text())
-		dataFile.close()
-		processsAndSetData()
+
+	data_Partecipants = Global.partecipantManager.getData()
+	processsAndSetData()
 
 # Called every frame. 'delta' is the elapsed time since the previous frame.
 func _process(_delta):
@@ -150,7 +145,7 @@ func enableStartButton():
 		$CancelMeetingButton.visible = true
 		$QuickAddButton.disabled = false
 		$QuickAddButton.visible = true
-		
+
 
 func _on_CancelMeetingButton_pressed():
 	var _nextScene = CommonScene.goto_scene("res://Scenes/Menu/Menu.tscn")
