@@ -174,22 +174,13 @@ func _loadDataFromAPI() -> Dictionary:
 static func loadAvatar(partecipant) -> Texture:
 	var texture: Texture = null
 	if (partecipant.has_image):
-		var image = Image.new()
 		if Global.config.use_api:
 			var ext = partecipant.image_path.get_extension()
-			var imageBuffer = Marshalls.base64_to_raw(partecipant.image)
-			var result = -1
-			if ext == 'jpg' or ext == 'jpeg':
-				result = image.load_jpg_from_buffer(imageBuffer)
-			else:
-				result = image.load_png_from_buffer(imageBuffer)
-
-			if result != OK:
+			texture = Global.textureFromBase64(partecipant.image, ext)
+			if texture == null:
 				print("Error on load image")
-			else:
-				texture = ImageTexture.new()
-				texture.create_from_image(image)
 		else:
+			var image = Image.new()
 			var path = partecipant.image_path
 			if !path.begins_with(IMAGES_PATH):
 				path = IMAGES_PATH + path

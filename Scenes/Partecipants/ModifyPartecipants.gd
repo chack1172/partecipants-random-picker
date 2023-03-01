@@ -50,46 +50,32 @@ func _process(_delta):
 	else:
 		$ModifyPartecipantFormButtons/ConfirmPartecipantButton.disabled = true
 
-func setCurrentPartecipantImage(path = null) -> void:
+func setCurrentPartecipantImage(base64 = null, fileExt = null) -> void:
 	var texture: ImageTexture = null
-	if path != null:
-		var file: File = File.new()
-		var newImage: Image = Image.new()
-		var error = newImage.load(path)
-		if error != OK:
-			print("Error on load image")
+	if base64 != null:
+		texture = Global.textureFromBase64(base64, fileExt)
+		if texture == null:
 			return
-		error = file.open(path, File.READ);
-		if error != OK:
-			print("Error on load image")
-			return
-		var image = file.get_buffer(file.get_len())
-		imageExt = path.get_extension()
-		image64 = Marshalls.raw_to_base64(image)
-		file.close()
-		texture = ImageTexture.new()
-		texture.create_from_image(newImage)
-		imageIsSet = true
+		image64 = base64
+		imageExt = fileExt
 		updateImage = true
+		imageIsSet = true
 	else:
 		imageIsSet = currentPartecipantData.has_image
 		texture = Partecipant.loadAvatar(currentPartecipantData)
 
 	$PartecipantPictureDisplay.set_texture(texture)
 
-func setCurrentPartecipantAudio(path = null) -> void:
+func setCurrentPartecipantAudio(base64 = null, fileExt = null) -> void:
 	var stream: AudioStream = null
-	if path != null:
-		var ogg_file = File.new()
-		ogg_file.open(path, File.READ)
-		var bytes = ogg_file.get_buffer(ogg_file.get_len())
-		audio64 = Marshalls.raw_to_base64(bytes)
-		audioExt = path.get_extension()
+	if base64 != null:
+		audio64 = base64
+		audioExt = fileExt
+		updateAudio = true
+		var bytes = Marshalls.base64_to_raw(base64)
 		stream = AudioStreamOGGVorbis.new()
 		stream.data = bytes
-		ogg_file.close()
 		audioIsSet = true
-		updateAudio = true
 	else:
 		audioIsSet = currentPartecipantData.has_audio
 		stream = Partecipant.loadAudio(currentPartecipantData)
@@ -100,19 +86,70 @@ func setCurrentPartecipantAudio(path = null) -> void:
 
 func _on_ModifyPictureButton_pressed():
 	currentLoadingType = loadingType.TYPE_IMAGE
-	$FileLoader.filters = PoolStringArray(["*.png ; PNG Images","*.jpg ; JPG Images","*.jpeg ; JPEG Images"])
-	$FileLoader.popup();
+	var filters = ["*.png ; PNG Images","*.jpg ; JPG Images","*.jpeg ; JPEG Images"]
+	file_loader_popup(filters)
 
 func _on_ModifyVoiceButton_pressed():
 	currentLoadingType = loadingType.TYPE_AUDIO
-	$FileLoader.filters = PoolStringArray(["*.ogg ; OGG Audio"])
-	$FileLoader.popup();
+	var filters = ["*.ogg ; OGG Audio"]
+	file_loader_popup(filters)
+
+var _callback = JavaScript.create_callback(self, "_on_input_file_selected")
+
+func file_loader_popup(filters: PoolStringArray):
+	if Global.IS_BROWSER:
+		var document = JavaScript.get_interface("document")
+		var input = document.createElement("input")
+		var accept = PoolStringArray()
+		for filter in filters:
+			filter = filter.split(";")[0].strip_edges().replace('*', '')
+			accept.append(filter)
+		input.type = "file"
+		input.accept = accept.join(",")
+		input.addEventListener("change", _callback)
+		input.click()
+		print("input clicked")
+	else:
+		$FileLoader.filters = PoolStringArray(filters)
+		$FileLoader.popup();
+
+var _fileReader_load_callback = JavaScript.create_callback(self, "_on_filereader_load")
+var _fileReader_error_callback = JavaScript.create_callback(self, "_on_filereader_error")
+
+func _on_input_file_selected(args):
+	var window = JavaScript.get_interface("window")
+	var jsFile = args[0].target.files[0];
+	window.readFileBase64Async(jsFile).then(_fileReader_load_callback).catch(_fileReader_error_callback)
+
+func _on_filereader_load(args):
+	var result = args[0]
+	print(result.base64);
+	var base64 = result.base64.split(",", true, 1)[1]
+	var jsFile = result.file
+	var ext = jsFile.name.get_extension()
+	_on_file_selected(base64, ext)
+
+func _on_filereader_error(_args):
+	print("Error reading file")
 
 func _on_FileLoader_file_selected(path):
+	var file: File = File.new()
+	var error = file.open(path, File.READ);
+	if error != OK:
+		print("Error on load file")
+		return
+	var content = file.get_buffer(file.get_len())
+	file.close()
+	var base64 = Marshalls.raw_to_base64(content)
+	var fileExt = path.get_extension()
+
+	_on_file_selected(base64, fileExt)
+
+func _on_file_selected(base64: String, fileExt: String):
 	if currentLoadingType == loadingType.TYPE_IMAGE:
-		setCurrentPartecipantImage(path)
+		setCurrentPartecipantImage(base64, fileExt)
 	if currentLoadingType == loadingType.TYPE_AUDIO:
-		setCurrentPartecipantAudio(path)
+		setCurrentPartecipantAudio(base64, fileExt)
 	currentLoadingType = loadingType.TYPE_EMPTY
 
 func _on_AudioStreamPlayer_finished():

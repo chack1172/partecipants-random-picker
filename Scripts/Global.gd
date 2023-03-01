@@ -47,3 +47,19 @@ func _parseArguments():
 
 func createTimer(time):
 	return get_tree().create_timer(time)
+
+func textureFromBase64(base64, ext):
+	var image = Image.new()
+	var imageBuffer = Marshalls.base64_to_raw(base64)
+	var result = -1
+	if ext == 'jpg' or ext == 'jpeg':
+		result = image.load_jpg_from_buffer(imageBuffer)
+	else:
+		result = image.load_png_from_buffer(imageBuffer)
+
+	if result != OK:
+		return null
+
+	var texture = ImageTexture.new()
+	texture.create_from_image(image)
+	return texture
