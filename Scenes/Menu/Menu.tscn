@@ -40,16 +40,15 @@ margin_left = 510.0
 margin_top = 441.0
 margin_right = 837.0
 margin_bottom = 497.0
+hint_tooltip = "Caricamento in corso..."
 custom_colors/font_color_disabled = Color( 0.27451, 0.254902, 0.254902, 1 )
 custom_colors/font_color = Color( 1, 1, 1, 1 )
 custom_colors/font_color_hover = Color( 0, 0.607843, 0.6, 1 )
 custom_colors/font_color_pressed = Color( 0, 0.607843, 0.6, 1 )
 custom_fonts/font = ExtResource( 3 )
+disabled = true
 text = "Iniziare Meeting"
 flat = true
-__meta__ = {
-"_edit_use_anchors_": false
-}
 
 [node name="Control" type="Control" parent="StartMeetingButton"]
 margin_right = 40.0
@@ -60,11 +59,13 @@ margin_left = 441.0
 margin_top = 521.0
 margin_right = 912.0
 margin_bottom = 577.0
+hint_tooltip = "Caricamento in corso..."
 custom_colors/font_color_disabled = Color( 0.27451, 0.254902, 0.254902, 1 )
 custom_colors/font_color = Color( 1, 1, 1, 1 )
 custom_colors/font_color_hover = Color( 0, 0.607843, 0.6, 1 )
 custom_colors/font_color_pressed = Color( 0, 0.607843, 0.6, 1 )
 custom_fonts/font = ExtResource( 3 )
+disabled = true
 text = "Elenco dei Partecipanti"
 flat = true
 

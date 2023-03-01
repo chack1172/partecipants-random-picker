@@ -18,6 +18,8 @@ func _ready():
 	else:
 		$StartMeetingButton.disabled = false
 		$StartMeetingButton.hint_tooltip = ""
+	$GoToPartecipantsListButton.disabled = false
+	$GoToPartecipantsListButton.hint_tooltip = ""
 
 # Called every frame. 'delta' is the elapsed time since the previous frame.
 # func _process(_delta):
