@@ -25,6 +25,10 @@ var meetCanStart = false
 
 var quickAddPartecipantIndex = null
 
+const MAX_TIME = 120
+var timeLeft = null
+var timer
+
 func _ready():
 	$CancelMeetingButton.disabled = true
 	$CancelMeetingButton.visible = false
@@ -36,6 +40,12 @@ func _ready():
 	$CallNextOneButton.visible = false
 	$LightBulbs.setStatus('loop')
 	$ShowPartecipantContainerSquare/LabelShowPartecipant.text = "Benvenuti!"
+	
+	timer = Timer.new()
+	timer.wait_time = 1.0
+	timer.connect("timeout", self, "_on_timer_interval")
+	add_child(timer)
+	
 	#Load next partecipant Stream
 	nextPartecipantStream = preload("res://Assets/Sounds/nextpartecipant.ogg")
 	# Load meeting Ends Stream
@@ -50,11 +60,20 @@ func _ready():
 
 # Called every frame. 'delta' is the elapsed time since the previous frame.
 func _process(_delta):
+	if (timeLeft != null):
+		$PartecipantTimer.visible = true
+		var minutes = int(timeLeft / 60)
+		var seconds = timeLeft - (minutes * 60)
+		$PartecipantTimer.text = ("%02d" % minutes) + ":" + ("%02d" % seconds)
 	if (MeetingActive == false):
 		$QuickAddButton.disabled = true
 		$QuickAddButton.visible = false
 	if (meetCanStart == false):
 		enableStartButton()
+
+func _on_timer_interval():
+	if (timeLeft != null && timeLeft > 0):
+		timeLeft -= 1
 
 func finishMeeting():
 	if (partecipantsIdArray.size() <= 0 && currentPartecipantId != null):
@@ -182,6 +201,8 @@ func get_random_number():
 func _on_CallNextOneButton_pressed(skipped = false):
 	var partecipantBallInstance = null
 	var currentId = currentPartecipantId
+	timeLeft = 0
+	timer.stop()
 	if (currentPartecipantId == null):
 		currentPartecipantId = partecipantsIdArray[get_random_number()]
 		startPartecipartSelectionProcess()
@@ -250,6 +271,8 @@ func _on_SelectingMusicStream_finished():
 func _on_SelectedMusicStream_finished():
 	$PartecipantNameAudioStream.stream = null
 	isSelectionOver = true
+	timeLeft = MAX_TIME
+	timer.start()
 	if (partecipantsIdArray.size() >= 1):
 		$CallNextOneButton.disabled = false
 		$CallNextOneButton.visible = true

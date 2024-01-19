@@ -351,6 +351,21 @@ wait_time = 0.045
 [node name="LightBulbs" parent="." instance=ExtResource( 11 )]
 position = Vector2( 1033.59, 341.731 )
 
+[node name="PartecipantTimer" type="Label" parent="."]
+visible = false
+margin_left = 396.0
+margin_top = 132.0
+margin_right = 771.0
+margin_bottom = 215.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_default_cursor_shape = 2
+custom_colors/font_color = Color( 0, 1, 0.945098, 1 )
+custom_fonts/font = ExtResource( 8 )
+text = "00:00"
+align = 1
+valign = 1
+
 [connection signal="item_selected" from="QuickAddLayer/QuickAddPartecipant/PartecipantsList" to="." method="_on_PartecipantsList_item_selected"]
 [connection signal="pressed" from="QuickAddLayer/QuickAddPartecipant/CancelQuickAdd" to="." method="_on_CancelQuickAdd_pressed"]
 [connection signal="pressed" from="CallNextOneButton" to="." method="_on_CallNextOneButton_pressed"]
