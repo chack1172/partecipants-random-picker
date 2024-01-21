@@ -25,9 +25,12 @@ var meetCanStart = false
 
 var quickAddPartecipantIndex = null
 
+## PARTECIPANT TIMER VARIABLED
 const MAX_TIME = 120
+const TIMER_COLOR = Color("#00fff1")
+const TIMER_NEG_COLOR = Color("#bd1212")
+var timerStarted = false
 var timeLeft = null
-var timer
 
 func _ready():
 	$CancelMeetingButton.disabled = true
@@ -40,11 +43,6 @@ func _ready():
 	$CallNextOneButton.visible = false
 	$LightBulbs.setStatus('loop')
 	$ShowPartecipantContainerSquare/LabelShowPartecipant.text = "Benvenuti!"
-	
-	timer = Timer.new()
-	timer.wait_time = 1.0
-	timer.connect("timeout", self, "_on_timer_interval")
-	add_child(timer)
 	
 	#Load next partecipant Stream
 	nextPartecipantStream = preload("res://Assets/Sounds/nextpartecipant.ogg")
@@ -61,19 +59,18 @@ func _ready():
 # Called every frame. 'delta' is the elapsed time since the previous frame.
 func _process(_delta):
 	if (timeLeft != null):
+		if (timerStarted == true):
+			timeLeft -= _delta
 		$PartecipantTimer.visible = true
-		var minutes = int(timeLeft / 60)
-		var seconds = timeLeft - (minutes * 60)
-		$PartecipantTimer.text = ("%02d" % minutes) + ":" + ("%02d" % seconds)
+		var minutes = int(abs(timeLeft) / 60)
+		var seconds = abs(timeLeft) - (minutes * 60)
+		$PartecipantTimer.text = ("-" if timeLeft < 0 else "") + ("%02d" % minutes) + ":" + ("%02d" % seconds)
+		$PartecipantTimer.add_color_override("font_color", TIMER_COLOR if timeLeft >= 0 else TIMER_NEG_COLOR)
 	if (MeetingActive == false):
 		$QuickAddButton.disabled = true
 		$QuickAddButton.visible = false
 	if (meetCanStart == false):
 		enableStartButton()
-
-func _on_timer_interval():
-	if (timeLeft != null && timeLeft > 0):
-		timeLeft -= 1
 
 func finishMeeting():
 	if (partecipantsIdArray.size() <= 0 && currentPartecipantId != null):
@@ -202,7 +199,7 @@ func _on_CallNextOneButton_pressed(skipped = false):
 	var partecipantBallInstance = null
 	var currentId = currentPartecipantId
 	timeLeft = 0
-	timer.stop()
+	timerStarted = false
 	if (currentPartecipantId == null):
 		currentPartecipantId = partecipantsIdArray[get_random_number()]
 		startPartecipartSelectionProcess()
@@ -272,7 +269,7 @@ func _on_SelectedMusicStream_finished():
 	$PartecipantNameAudioStream.stream = null
 	isSelectionOver = true
 	timeLeft = MAX_TIME
-	timer.start()
+	timerStarted = true
 	if (partecipantsIdArray.size() >= 1):
 		$CallNextOneButton.disabled = false
 		$CallNextOneButton.visible = true
